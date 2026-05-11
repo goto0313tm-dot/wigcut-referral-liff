@@ -11,11 +11,29 @@ export async function ensureLiffReady(): Promise<typeof liff> {
     throw new Error('NEXT_PUBLIC_LIFF_ID is not configured');
   }
 
-  await liff.init({ liffId });
+  try {
+    await liff.init({ liffId });
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    throw new Error(`liff.init failed: ${message}`);
+  }
+
+  if (typeof liff.ready !== 'undefined') {
+    try {
+      await liff.ready;
+    } catch {
+      // ignore
+    }
+  }
 
   if (!liff.isLoggedIn()) {
+    if (liff.isInClient()) {
+      throw new Error(
+        'LIFF が LINE 内ブラウザでログイン情報を取得できません。LINE アプリを最新版に更新して再度お試しください。'
+      );
+    }
     liff.login();
-    return liff;
+    throw new Error('Redirecting to LINE Login...');
   }
 
   initialized = true;
@@ -24,13 +42,18 @@ export async function ensureLiffReady(): Promise<typeof liff> {
 
 export async function getLineProfile(): Promise<LineProfile> {
   await ensureLiffReady();
-  const profile = await liff.getProfile();
-  return {
-    userId: profile.userId,
-    displayName: profile.displayName,
-    pictureUrl: profile.pictureUrl,
-    statusMessage: profile.statusMessage,
-  };
+  try {
+    const profile = await liff.getProfile();
+    return {
+      userId: profile.userId,
+      displayName: profile.displayName,
+      pictureUrl: profile.pictureUrl,
+      statusMessage: profile.statusMessage,
+    };
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    throw new Error(`liff.getProfile failed: ${message}`);
+  }
 }
 
 export async function isInLineClient(): Promise<boolean> {
