@@ -30,6 +30,10 @@ export type LinkBeneficiaryResponse = {
   ok: boolean;
   redirect_to: string;
   already_linked?: boolean;
+  beneficiary_coupon_code?: string;
+  beneficiary_coupon_amount?: number;
+  beneficiary_coupon_expires_at?: string | null;
+  note?: string;
   error?: string;
 };
 

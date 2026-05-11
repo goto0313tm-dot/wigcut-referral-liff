@@ -6,6 +6,7 @@ import type {
 } from './types';
 
 const GAS_URL = process.env.NEXT_PUBLIC_GAS_WEB_APP_URL;
+const GAS_API_KEY = process.env.NEXT_PUBLIC_GAS_API_KEY;
 
 async function gasPost<T>(action: string, payload: Record<string, unknown>): Promise<T> {
   if (!GAS_URL) {
@@ -13,10 +14,12 @@ async function gasPost<T>(action: string, payload: Record<string, unknown>): Pro
   }
 
   const url = `${GAS_URL}?action=${encodeURIComponent(action)}`;
+  const body = GAS_API_KEY ? { ...payload, api_key: GAS_API_KEY } : payload;
+
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
   });
 
   if (!res.ok) {
