@@ -16,9 +16,11 @@ async function gasPost<T>(action: string, payload: Record<string, unknown>): Pro
   const url = `${GAS_URL}?action=${encodeURIComponent(action)}`;
   const body = GAS_API_KEY ? { ...payload, api_key: GAS_API_KEY } : payload;
 
+  // ★ CORS preflight を避けるため Content-Type は text/plain
+  // GAS の doPost は e.postData.contents で body を取得するので type は不問
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify(body),
   });
 
