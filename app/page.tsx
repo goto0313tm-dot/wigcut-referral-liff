@@ -1,15 +1,43 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { ensureLiffReady } from '@/lib/liff';
+import LoadingSpinner from '@/components/LoadingSpinner';
+import ErrorMessage from '@/components/ErrorMessage';
+
 export default function Home() {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-pink-50 to-white p-6">
-      <div className="max-w-md text-center space-y-4">
-        <h1 className="text-2xl font-bold text-gray-900">WIGCUT 紹介プログラム</h1>
-        <p className="text-sm text-gray-600">
-          このページは LIFF アプリです。WIGCUT 公式 LINE のリッチメニュー、または有効な紹介リンクからアクセスしてください。
-        </p>
-        <p className="text-xs text-gray-400">
-          直接 URL でアクセスされた場合、想定通りに動作しません。
-        </p>
-      </div>
-    </div>
-  );
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        await ensureLiffReady();
+        if (cancelled) return;
+
+        // SDK 初期化完了後、URL の ref を確認して適切なページへ遷移
+        const params = new URLSearchParams(window.location.search);
+        const ref = params.get('ref');
+        if (ref) {
+          router.replace(`/redirect?ref=${encodeURIComponent(ref)}`);
+          return;
+        }
+
+        // ref が無ければ紹介者発行画面へ
+        router.replace('/referrer');
+      } catch (e: unknown) {
+        if (cancelled) return;
+        const message = e instanceof Error ? e.message : String(e);
+        setError(message);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
+
+  if (error) return <ErrorMessage message={error} />;
+  return <LoadingSpinner message="読み込み中…" />;
 }
