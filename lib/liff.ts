@@ -1,30 +1,34 @@
 import liff from '@line/liff';
 import type { LineProfile } from './types';
 
-let initialized = false;
+// Promise-based ロックで並列 init を防ぐ
+let initPromise: Promise<void> | null = null;
+
+function createInitPromise(liffId: string): Promise<void> {
+  return liff.init({ liffId }).then(() => {
+    if (typeof liff.ready !== 'undefined') {
+      return liff.ready;
+    }
+  });
+}
 
 export async function ensureLiffReady(): Promise<typeof liff> {
-  if (initialized) return liff;
-
   const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
   if (!liffId) {
     throw new Error('NEXT_PUBLIC_LIFF_ID is not configured');
   }
 
-  try {
-    await liff.init({ liffId });
-  } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : String(e);
-    throw new Error(`liff.init failed: ${message}`);
+  // 初回のみ Promise を生成、並列呼び出しは同じ Promise を待つ
+  if (!initPromise) {
+    initPromise = createInitPromise(liffId).catch((e: unknown) => {
+      // init 失敗時はロックを解除して再試行可能にする
+      initPromise = null;
+      const message = e instanceof Error ? e.message : String(e);
+      throw new Error(`liff.init failed: ${message}`);
+    });
   }
 
-  if (typeof liff.ready !== 'undefined') {
-    try {
-      await liff.ready;
-    } catch {
-      // ignore
-    }
-  }
+  await initPromise;
 
   if (!liff.isLoggedIn()) {
     if (liff.isInClient()) {
@@ -36,7 +40,6 @@ export async function ensureLiffReady(): Promise<typeof liff> {
     throw new Error('Redirecting to LINE Login...');
   }
 
-  initialized = true;
   return liff;
 }
 
